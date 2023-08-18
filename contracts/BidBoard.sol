@@ -31,6 +31,13 @@ contract BidBoard {
     // PUBLIC FUNCTIONS
 
     /**
+     * @dev Returns the current bidding fee bps.
+     */
+    function getBiddingFeeBps() public view returns(uint16 _bidFeeBps) {
+        return bidFeeBps;
+    }
+
+    /**
      * @dev Places a bid by the caller for the token with id `tokenId` in the `nftContract` NFT contract.
      *
      * Requirements:
@@ -40,13 +47,11 @@ contract BidBoard {
      * - msg.value has to be greater than 0.
      */
     function placeBid(address nftContract, uint256 tokenId, uint256 amount) public payable {
-        uint256 fee = (amount / 10000) * bidFeeBps;
-        require(msg.value >= fee);
-
+        uint256 fee = (amount * bidFeeBps) / 10000;
         Position memory currentBid = bids[nftContract][tokenId];
         require(currentBid.initiator == address(0) || currentBid.amount < amount);
 
-        wethContract.transferFrom(msg.sender, address(this), amount);
+        wethContract.safeTransferFrom(msg.sender, address(this), amount + fee);
         bids[nftContract][tokenId] = Position(msg.sender, "WETH", amount, fee);
 
         emit BidPlaced(nftContract, tokenId, "WETH", amount);
