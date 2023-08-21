@@ -2,12 +2,20 @@ const { expect } = require('chai');
 const { ethers } = require('hardhat');
 
 describe("BidBoard", function () {
+	const zeroAddr = "0x0000000000000000000000000000000000000000";
+
 	let weth;
-	let erc721Mock;
 	let bidBoard;
+	let erc721Mock;
+
+	let wethAddr;
+	let bidBoardAddr;
+	let erc721Addr;
 
 	let owner;
 	let addr1;
+
+	let bidFeeBps;
 
 	beforeEach(async () => {
 
@@ -15,26 +23,64 @@ describe("BidBoard", function () {
 
 		const WETH = await ethers.getContractFactory("WETH");
 		weth = await WETH.deploy(1000000000000000);
+		wethAddr = await weth.getAddress();
+
+        const BidBoard = await ethers.getContractFactory("BidBoard");
+        bidBoard = await BidBoard.deploy(wethAddr);
+		bidBoardAddr = await bidBoard.getAddress();
 
 		const ERC721Mock = await ethers.getContractFactory("ERC721Mock");
 		erc721Mock = await ERC721Mock.deploy();
-
-        const BidBoard = await ethers.getContractFactory("BidBoard");
-        bidBoard = await BidBoard.deploy(await weth.getAddress());
+		erc721Addr = await erc721Mock.getAddress();
 
 		// CONFIGS
 
 		[owner, addr1] = await ethers.getSigners();
 
-		await erc721Mock.setApprovalForAll(await bidBoard.getAddress(), true);
-		await erc721Mock.connect(addr1).setApprovalForAll(await bidBoard.getAddress(), true);
+		await erc721Mock.setApprovalForAll(bidBoardAddr, true);
+		await erc721Mock.connect(addr1).setApprovalForAll(bidBoardAddr, true);
 
-		await weth.approve(await bidBoard.getAddress(), 1000000000000000);
-		await weth.connect(addr1).approve(await bidBoard.getAddress(), 1000000000000000);
+		await weth.approve(bidBoardAddr, 1000000000000000);
+		await weth.connect(addr1).approve(bidBoardAddr, 1000000000000000);
+
+		bidFeeBps = Number(await bidBoard.getBiddingFeeBps());
     });
 
-	it("BidBoard", async () => {
+	it("Bid placement and cancellation", async () => {
 		await erc721Mock.mint(addr1.address, 0);
-		await bidBoard.placeBid(await erc721Mock.getAddress(), 0, 100000);
+		const amount = 100000;
+		const fee = (amount * bidFeeBps) / 10000;
+
+		const ownerInitBalance = Number(await weth.balanceOf(owner));
+		const bidBoardInitBalance = Number(await weth.balanceOf(bidBoardAddr));
+
+		await bidBoard.placeBid(erc721Addr, 0, amount);
+		let currentBid = await bidBoard.getCurrentBid(erc721Addr, 0);
+		
+		expect(Number(currentBid[0])).to.equal(amount);
+		expect(await weth.balanceOf(owner)).to.equal(ownerInitBalance - (amount + fee));
+		expect(await weth.balanceOf(bidBoardAddr)).to.equal(amount + fee);
+
+		await bidBoard.cancelBid(erc721Addr, 0);
+		expect(await weth.balanceOf(owner)).to.equal(ownerInitBalance);
+		expect(await weth.balanceOf(bidBoardAddr)).to.equal(bidBoardInitBalance);
+	});
+
+	it("Bid placement and acceptance", async () => {
+		await erc721Mock.mint(addr1.address, 0);
+		const amount = 100000;
+		const fee = (amount * bidFeeBps) / 10000;
+
+		const ownerInitBalance = Number(await weth.balanceOf(owner));
+
+		await bidBoard.placeBid(erc721Addr, 0, amount);
+		expect(await weth.balanceOf(bidBoardAddr)).to.equal(amount + fee);
+		expect(bidBoard.acceptBid(erc721Addr, 0)).to.be.reverted;
+		await bidBoard.connect(addr1).acceptBid(erc721Addr, 0);
+
+		expect(await weth.balanceOf(owner)).to.equal(ownerInitBalance - (amount + fee));
+		expect(await weth.balanceOf(bidBoardAddr)).to.equal(fee);
+		expect(await weth.balanceOf(addr1)).to.equal(amount);
+		expect(await erc721Mock.ownerOf(0)).to.equal(owner.address);
 	});
 });
