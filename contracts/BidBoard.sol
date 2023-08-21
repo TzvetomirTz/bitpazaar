@@ -5,6 +5,7 @@ pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { Position } from "./types/Position.sol";
 
 contract BidBoard {
@@ -26,7 +27,9 @@ contract BidBoard {
 
     // EVENTS
 
-    event BidPlaced(address nftContract, uint256 tokenId, string currency, uint256 amount);
+    event BidPlaced(address nftContract, uint256 tokenId, uint256 amount, uint256 fee);
+    event BidCancelled(address nftContract, uint256 tokenId, uint256 totalRefund);
+    event BidAccepted(address nftContract, uint256 tokenId, uint256 amount);
 
     // PUBLIC FUNCTIONS
 
@@ -43,17 +46,70 @@ contract BidBoard {
      * Requirements:
      *
      * - `nftContract` has to be a valid ERC721 implementation.
-     * - `tokenId` .
-     * - msg.value has to be greater than 0.
+     * - `tokenId` has to be a valid token id for the given ERC721.
      */
-    function placeBid(address nftContract, uint256 tokenId, uint256 amount) public payable {
+    function placeBid(address nftContract, uint256 tokenId, uint256 amount) public {
         uint256 fee = (amount * bidFeeBps) / 10000;
         Position memory currentBid = bids[nftContract][tokenId];
         require(currentBid.initiator == address(0) || currentBid.amount < amount);
 
         wethContract.safeTransferFrom(msg.sender, address(this), amount + fee);
-        bids[nftContract][tokenId] = Position(msg.sender, "WETH", amount, fee);
+        bids[nftContract][tokenId] = Position(msg.sender, amount, fee);
 
-        emit BidPlaced(nftContract, tokenId, "WETH", amount);
+        emit BidPlaced(nftContract, tokenId, amount, fee);
+    }
+
+    /**
+     * @dev Cancels a bid by the caller for the token with id `tokenId` in the `nftContract` NFT contract.
+     *
+     * Requirements:
+     *
+     * - `nftContract` has to be a valid ERC721 implementation.
+     * - `tokenId` has to be a valid token id for the given ERC721.
+     * - msg.sender has to be the owner of the current bid.
+     */
+    function cancelBid(address nftContract, uint256 tokenId) public {
+        Position memory bid = bids[nftContract][tokenId];
+        require(bid.initiator == msg.sender, "Not enough permissions to cancel this bid.");
+
+        delete bids[nftContract][tokenId];
+        wethContract.safeTransfer(msg.sender, bid.amount + bid.fee);
+
+        emit BidCancelled(nftContract, tokenId, bid.amount + bid.fee);
+    }
+
+    /**
+     * @dev Cancels a bid by the caller for the token with id `tokenId` in the `nftContract` NFT contract.
+     *
+     * Requirements:
+     *
+     * - `nftContract` has to be a valid ERC721 implementation.
+     * - `tokenId` has to be a valid token id for the given ERC721.
+     * - msg.sender has to be the owner of the current bid.
+     */
+    function getCurrentBid(address nftContract, uint256 tokenId) public view returns (uint256 _amount, address _bidOwner) {
+        Position memory bid = bids[nftContract][tokenId];
+        return (bid.amount, bid.initiator);
+    }
+
+    /**
+     * @dev Accepts the current bid for the token with id `tokenId` in the `nftContract` NFT contract.
+     *
+     * Requirements:
+     *
+     * - `nftContract` has to be a valid ERC721 implementation.
+     * - `tokenId` has to be a valid token id for the given ERC721.
+     * - msg.sender has to be the owner of the token.
+     * - There has to be an active bid.
+     */
+    function acceptBid(address nftContract, uint256 tokenId) public {
+        Position memory currentBid = bids[nftContract][tokenId];
+        require(currentBid.initiator != address(0), "Bid is not present.");
+
+        delete bids[nftContract][tokenId];
+        IERC721(nftContract).safeTransferFrom(msg.sender, currentBid.initiator, tokenId);
+        wethContract.safeTransfer(msg.sender, currentBid.amount);
+
+        emit BidAccepted(nftContract, tokenId, currentBid.amount);
     }
 }
