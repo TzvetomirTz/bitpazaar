@@ -79,13 +79,12 @@ contract BidBoard {
     }
 
     /**
-     * @dev Cancels a bid by the caller for the token with id `tokenId` in the `nftContract` NFT contract.
+     * @dev Returns the current bid for the token with id `tokenId` in the `nftContract` NFT contract.
      *
      * Requirements:
      *
      * - `nftContract` has to be a valid ERC721 implementation.
      * - `tokenId` has to be a valid token id for the given ERC721.
-     * - msg.sender has to be the owner of the current bid.
      */
     function getCurrentBid(address nftContract, uint256 tokenId) public view returns (uint256 _amount, address _bidOwner) {
         Position memory bid = bids[nftContract][tokenId];
