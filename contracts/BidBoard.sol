@@ -17,9 +17,9 @@ contract BidBoard is Ownable {
     
     //VARIABLES
 
-    uint256 profit = 0;
-    uint16 bidFeeBps = 100;
-    IERC20 wethContract;
+    uint256 private profit = 0;
+    uint16 private bidFeeBps = 100;
+    IERC20 private wethContract;
     mapping(address => mapping(uint256 => Position)) private bids; // erc721Addr -> tokenId -> position
 
     // CONSTRUCTOR
@@ -83,6 +83,8 @@ contract BidBoard is Ownable {
         wethContract.safeTransfer(msg.sender, bid.amount + bid.fee);
 
         emit BidCancelled(nftContract, tokenId, bid.amount + bid.fee);
+
+        // TODO: add minimum of blocks mined interval to keep a bid before cancellation availability.
     }
 
     /**
@@ -120,7 +122,10 @@ contract BidBoard is Ownable {
         emit BidAccepted(nftContract, tokenId, currentBid.amount);
     }
 
-    function yieldProfit() public onlyOwner {
+    /**
+     * @dev Yields the fees profit and sends it to the owner of the Bid Board.
+     */
+    function yieldProfit() public {
         wethContract.safeTransfer(owner(), profit);
         profit = 0;
     }
