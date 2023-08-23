@@ -16,6 +16,7 @@ contract BidBoard {
     
     //VARIABLES
 
+    uint256 profit = 0;
     uint16 bidFeeBps = 100;
     IERC20 wethContract;
     mapping(address => mapping(uint256 => Position)) private bids; // erc721Addr -> tokenId -> position
@@ -52,6 +53,11 @@ contract BidBoard {
         uint256 fee = (amount * bidFeeBps) / 10000;
         Position memory currentBid = bids[nftContract][tokenId];
         require(currentBid.initiator == address(0) || currentBid.amount < amount);
+
+        if(currentBid.initiator != address(0)) {
+            delete bids[nftContract][tokenId];
+            wethContract.safeTransfer(currentBid.initiator, currentBid.amount + currentBid.fee);
+        }
 
         wethContract.safeTransferFrom(msg.sender, address(this), amount + fee);
         bids[nftContract][tokenId] = Position(msg.sender, amount, fee);
