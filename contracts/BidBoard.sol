@@ -142,4 +142,11 @@ contract BidBoard is Ownable {
     function updateMinBlocksToCancelBid(uint16 newWait) public onlyOwner {
         minBlocksToCancelBid = newWait;
     }
+
+    /**
+     * @dev Returns the minimum blocks mining wait time to allow someone to cancel their bid.
+     */
+    function getMinBlocksToCancelBid() public view returns(uint256 _minBlocksToCancelBid) {
+        return minBlocksToCancelBid;
+    }
 }
