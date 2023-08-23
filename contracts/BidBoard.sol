@@ -110,9 +110,10 @@ contract BidBoard is Ownable {
      * - msg.sender has to be the owner of the token.
      * - There has to be an active bid.
      */
-    function acceptBid(address nftContract, uint256 tokenId) public {
+    function acceptBid(address nftContract, uint256 tokenId, uint256 amount) public {
         Position memory currentBid = bids[nftContract][tokenId];
         require(currentBid.initiator != address(0), "Bid is not present.");
+        require(currentBid.amount == amount, "Current bid amount doesn't match the requested one."); // Prevents front running and old tx execution.
 
         delete bids[nftContract][tokenId];
         IERC721(nftContract).safeTransferFrom(msg.sender, currentBid.initiator, tokenId);

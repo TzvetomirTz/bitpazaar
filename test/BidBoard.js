@@ -78,8 +78,8 @@ describe("BidBoard", function () {
 
 		await bidBoard.placeBid(erc721Addr, 0, amount);
 		expect(await weth.balanceOf(bidBoardAddr)).to.equal(amount + fee);
-		expect(bidBoard.acceptBid(erc721Addr, 0)).to.be.reverted;
-		await bidBoard.connect(addr1).acceptBid(erc721Addr, 0);
+		expect(bidBoard.acceptBid(erc721Addr, 0, amount)).to.be.reverted;
+		await bidBoard.connect(addr1).acceptBid(erc721Addr, 0, amount);
 
 		expect(await weth.balanceOf(owner)).to.equal(ownerInitBalance - (amount + fee));
 		expect(await weth.balanceOf(bidBoardAddr)).to.equal(fee);
