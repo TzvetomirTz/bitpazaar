@@ -29,6 +29,7 @@ contract AskBoard {
 
     event AskPlaced(address nftContract, uint256 tokenId, uint256 amount, uint256 fee);
     event AskCancelled(address nftContract, uint256 tokenId, uint256 amount, uint256 fee);
+    event AskAccepted(address nftContract, uint256 tokenId, uint256 amount);
 
     /**
      * @dev Places an ask by the caller for the token with id `tokenId` in the `nftContract` NFT contract.
@@ -81,5 +82,25 @@ contract AskBoard {
         return (ask.amount, ask.fee, ask.initiator);
     }
 
-    
+    /**
+     * @dev Accepts the current ask for the token with id `tokenId` in the `nftContract` NFT contract.
+     *
+     * Requirements:
+     *
+     * - `nftContract` has to be a valid ERC721 implementation.
+     * - `tokenId` has to be a valid token id for the given ERC721.
+     * - There has to be an active ask.
+     */
+    function acceptAsk(address nftContract, uint256 tokenId, uint256 amount) public {
+        Position memory currentAsk = asks[nftContract][tokenId];
+        require(currentAsk.initiator != address(0), "Ask is not present.");
+        require(currentAsk.amount == amount, "Current ask amount doesn't match the requested one."); // Prevents front running and old tx execution.
+
+        delete asks[nftContract][tokenId];
+        wethContract.safeTransferFrom(msg.sender, address(this), currentAsk.amount + currentAsk.fee);
+        wethContract.safeTransfer(currentAsk.initiator, currentAsk.amount);
+        IERC721(nftContract).safeTransferFrom(address(this), msg.sender, tokenId);
+
+        emit AskAccepted(nftContract, tokenId, currentAsk.amount);
+    }
 }
