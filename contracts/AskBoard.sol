@@ -45,7 +45,7 @@ contract AskBoard {
         uint256 fee = (amount * askFeeBps) / 10000;
 
         IERC721(nftContract).safeTransferFrom(msg.sender, address(this), tokenId);
-        asks[nftContract][tokenId] = Position(msg.sender, amount, fee);
+        asks[nftContract][tokenId] = Position(msg.sender, amount, fee, block.number);
 
         emit AskPlaced(nftContract, tokenId, amount, fee);
     }

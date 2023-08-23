@@ -19,6 +19,7 @@ contract BidBoard is Ownable {
 
     uint256 private profit = 0;
     uint16 private bidFeeBps = 100;
+    uint16 private minBlocksToCancelBid = 600;
     IERC20 private wethContract;
     mapping(address => mapping(uint256 => Position)) private bids; // erc721Addr -> tokenId -> position
 
@@ -61,7 +62,7 @@ contract BidBoard is Ownable {
         }
 
         wethContract.safeTransferFrom(msg.sender, address(this), amount + fee);
-        bids[nftContract][tokenId] = Position(msg.sender, amount, fee);
+        bids[nftContract][tokenId] = Position(msg.sender, amount, fee, block.number);
 
         emit BidPlaced(nftContract, tokenId, amount, fee);
     }
@@ -78,6 +79,7 @@ contract BidBoard is Ownable {
     function cancelBid(address nftContract, uint256 tokenId) public {
         Position memory bid = bids[nftContract][tokenId];
         require(bid.initiator == msg.sender, "Not enough permissions to cancel this bid.");
+        require(block.number - bid.originBlock >= minBlocksToCancelBid, "Bid cannot be cancelled yet.");
 
         delete bids[nftContract][tokenId];
         wethContract.safeTransfer(msg.sender, bid.amount + bid.fee);
@@ -129,5 +131,15 @@ contract BidBoard is Ownable {
     function yieldProfit() public {
         wethContract.safeTransfer(owner(), profit);
         profit = 0;
+    }
+
+    /**
+     * @dev Changes the minimum blocks mining wait time to allow someone to cancel their bid.
+     *
+     * Requirements:
+     * msg.sender has to be the owner of the Bid Board.
+     */
+    function updateMinBlocksToCancelBid(uint16 newWait) public onlyOwner {
+        minBlocksToCancelBid = newWait;
     }
 }
