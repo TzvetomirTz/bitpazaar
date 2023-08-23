@@ -39,7 +39,7 @@ contract BidBoard is Ownable {
     /**
      * @dev Returns the current bidding fee bps.
      */
-    function getBiddingFeeBps() public view returns(uint16 _bidFeeBps) {
+    function getBidFeeBps() public view returns(uint16 _bidFeeBps) {
         return bidFeeBps;
     }
 

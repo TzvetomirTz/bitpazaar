@@ -46,7 +46,7 @@ describe("BidBoard", function () {
 		await weth.connect(addr1).approve(bidBoardAddr, 1000000000000000);
 		await weth.connect(addr2).approve(bidBoardAddr, 1000000000000000);
 
-		bidFeeBps = Number(await bidBoard.getBiddingFeeBps());
+		bidFeeBps = Number(await bidBoard.getBidFeeBps());
 		await bidBoard.updateMinBlocksToCancelBid(0);
     });
 

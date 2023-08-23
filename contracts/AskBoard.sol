@@ -103,4 +103,11 @@ contract AskBoard {
 
         emit AskAccepted(nftContract, tokenId, currentAsk.amount);
     }
+
+    /**
+     * @dev Returns the current ask fee bps. This fee is paid by the accepting side, not by the asker.
+     */
+    function getAskFeeBps() public view returns(uint16 _askFeeBps) {
+        return askFeeBps;
+    }
 }
