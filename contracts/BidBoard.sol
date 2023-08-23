@@ -6,9 +6,10 @@ pragma solidity 0.8.19;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import { Position } from "./types/Position.sol";
 
-contract BidBoard {
+contract BidBoard is Ownable {
 
     // LIBS
 
@@ -114,7 +115,13 @@ contract BidBoard {
         delete bids[nftContract][tokenId];
         IERC721(nftContract).safeTransferFrom(msg.sender, currentBid.initiator, tokenId);
         wethContract.safeTransfer(msg.sender, currentBid.amount);
+        profit += currentBid.fee;
 
         emit BidAccepted(nftContract, tokenId, currentBid.amount);
+    }
+
+    function yieldProfit() public onlyOwner {
+        wethContract.safeTransfer(owner(), profit);
+        profit = 0;
     }
 }
