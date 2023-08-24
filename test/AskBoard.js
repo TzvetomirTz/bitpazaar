@@ -49,8 +49,35 @@ describe("AskBoard", function () {
 		askFeeBps = Number(await askBoard.getAskFeeBps());
     });
 
-    
     it("Ask placement and cancellation", async () => {
-        
+		await erc721Mock.mint(owner.address, 0);
+
+		expect(askBoard.connect(addr1).placeAsk(erc721Addr, 0, 100000)).to.be.reverted;
+		await askBoard.placeAsk(erc721Addr, 0, 100000);
+		expect(await erc721Mock.ownerOf(0)).to.equal(askBoardAddr);
+
+		expect(askBoard.connect(addr1).cancelAsk(erc721Addr, 0)).to.be.reverted;
+		await askBoard.cancelAsk(erc721Addr, 0);
+		expect(await erc721Mock.ownerOf(0)).to.equal(owner.address);
+	});
+
+	it("Ask placement and acceptance", async () => {
+		await erc721Mock.mint(owner.address, 0);
+		const amount = 100000;
+		const fee = (amount * askFeeBps) / 10000;
+		await weth.transfer(addr1, 200000);
+
+		const ownerInitBalance = Number(await weth.balanceOf(owner));
+		const addr1InitBalance = Number(await weth.balanceOf(addr1));
+
+		expect(askBoard.connect(addr1).placeAsk(erc721Addr, 0, amount)).to.be.reverted;
+		await askBoard.placeAsk(erc721Addr, 0, amount);
+		expect(await erc721Mock.ownerOf(0)).to.equal(askBoardAddr);
+
+		await askBoard.connect(addr1).acceptAsk(erc721Addr, 0, amount);
+		expect(Number(await weth.balanceOf(owner))).to.equal(ownerInitBalance + amount);
+		expect(Number(await weth.balanceOf(addr1))).to.equal(addr1InitBalance - (amount + fee));
+		expect(Number(await weth.balanceOf(askBoardAddr))).to.equal(fee);
+		expect(await erc721Mock.ownerOf(0)).to.equal(addr1.address);
 	});
 });
