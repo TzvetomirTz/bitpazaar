@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import { Position } from "./types/Position.sol";
+import { Bid } from "./types/Bid.sol";
 
 contract BidBoard is Ownable {
 
@@ -21,7 +21,7 @@ contract BidBoard is Ownable {
     uint16 private bidFeeBps = 100;
     uint16 private minBlocksToCancelBid = 600;
     IERC20 private wethContract;
-    mapping(address => mapping(uint256 => Position)) private bids; // erc721Addr -> tokenId -> position
+    mapping(address => mapping(uint256 => Bid)) private bids; // erc721Addr -> tokenId -> Bid
 
     // CONSTRUCTOR
     constructor(address wethContractAddr) {
@@ -53,7 +53,7 @@ contract BidBoard is Ownable {
      */
     function placeBid(address nftContract, uint256 tokenId, uint256 amount) public {
         uint256 fee = (amount * bidFeeBps) / 10000;
-        Position memory currentBid = bids[nftContract][tokenId];
+        Bid memory currentBid = bids[nftContract][tokenId];
         require(currentBid.initiator == address(0) || currentBid.amount < amount);
 
         if(currentBid.initiator != address(0)) {
@@ -62,7 +62,7 @@ contract BidBoard is Ownable {
         }
 
         wethContract.safeTransferFrom(msg.sender, address(this), amount + fee);
-        bids[nftContract][tokenId] = Position(msg.sender, amount, fee, block.number);
+        bids[nftContract][tokenId] = Bid(msg.sender, amount, fee, block.number);
 
         emit BidPlaced(nftContract, tokenId, amount, fee);
     }
@@ -77,7 +77,7 @@ contract BidBoard is Ownable {
      * - msg.sender has to be the owner of the current bid.
      */
     function cancelBid(address nftContract, uint256 tokenId) public {
-        Position memory bid = bids[nftContract][tokenId];
+        Bid memory bid = bids[nftContract][tokenId];
         require(bid.initiator == msg.sender, "Not enough permissions to cancel this bid.");
         require(block.number - bid.originBlock >= minBlocksToCancelBid, "Bid cannot be cancelled yet.");
 
@@ -98,7 +98,7 @@ contract BidBoard is Ownable {
      * - `tokenId` has to be a valid token id for the given ERC721.
      */
     function getCurrentBid(address nftContract, uint256 tokenId) public view returns (uint256 _amount, address _bidOwner) {
-        Position memory bid = bids[nftContract][tokenId];
+        Bid memory bid = bids[nftContract][tokenId];
         return (bid.amount, bid.initiator);
     }
 
@@ -113,7 +113,7 @@ contract BidBoard is Ownable {
      * - There has to be an active bid.
      */
     function acceptBid(address nftContract, uint256 tokenId, uint256 amount) public {
-        Position memory currentBid = bids[nftContract][tokenId];
+        Bid memory currentBid = bids[nftContract][tokenId];
         require(currentBid.initiator != address(0), "Bid is not present.");
         require(currentBid.amount == amount, "Current bid amount doesn't match the requested one."); // Prevents front running and old tx execution.
 
@@ -126,9 +126,9 @@ contract BidBoard is Ownable {
     }
 
     /**
-     * @dev Yields the fees profit and sends it to the owner of the Bid Board.
+     * @dev Yields all the fees profit and sends it to the owner of the Bid Board.
      */
-    function yieldProfit() public {
+    function yieldAllProfit() public {
         wethContract.safeTransfer(owner(), profit);
         profit = 0;
     }
