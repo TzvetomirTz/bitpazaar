@@ -7,9 +7,10 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import { Ask } from "./types/Ask.sol";
 
-contract AskBoard is ERC721Holder {
+contract AskBoard is ERC721Holder, Ownable {
 
     // LIBS
 
@@ -17,6 +18,7 @@ contract AskBoard is ERC721Holder {
 
     //VARIABLES
 
+    uint256 private profit = 0;
     uint16 askFeeBps = 100;
     IERC20 wethContract;
     mapping(address => mapping(uint256 => Ask)) private asks; // erc721Addr -> tokenId -> Ask
@@ -102,6 +104,7 @@ contract AskBoard is ERC721Holder {
         wethContract.safeTransfer(currentAsk.initiator, currentAsk.amount);
         IERC721(nftContract).safeTransferFrom(address(this), msg.sender, tokenId);
 
+        profit += fee;
         emit AskAccepted(nftContract, tokenId, currentAsk.amount);
     }
 
@@ -110,5 +113,13 @@ contract AskBoard is ERC721Holder {
      */
     function getAskFeeBps() public view returns(uint16 _askFeeBps) {
         return askFeeBps;
+    }
+
+    /**
+     * @dev Yields all the fees profit and sends it to the owner of the Bid Board.
+     */
+    function yieldAllProfit() public {
+        wethContract.safeTransfer(owner(), profit);
+        profit = 0;
     }
 }
