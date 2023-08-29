@@ -18,9 +18,9 @@ contract AskBoard is ERC721Holder, Ownable {
 
     //VARIABLES
 
-    uint256 private profit = 0;
-    uint16 askFeeBps = 100;
-    IERC20 wethContract;
+    uint256 private profit = 0; // full slot
+    uint16 askFeeBps = 100;     // 16/256 bits
+    IERC20 wethContract;        // 176/256 bits
     mapping(address => mapping(uint256 => Ask)) private asks; // erc721Addr -> tokenId -> Ask
 
     // CONSTRUCTOR

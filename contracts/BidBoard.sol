@@ -17,10 +17,10 @@ contract BidBoard is Ownable {
     
     //VARIABLES
 
-    uint256 private profit = 0;
-    uint16 private bidFeeBps = 100;
-    uint16 private minBlocksToCancelBid = 600;
-    IERC20 private wethContract;
+    uint256 private profit = 0;                 // full slot
+    IERC20 private wethContract;                // 160/256 bits
+    uint32 private minBlocksToCancelBid = 600;  // 192/256 bits
+    uint16 private bidFeeBps = 100;             // 208/256 bits
     mapping(address => mapping(uint256 => Bid)) private bids; // erc721Addr -> tokenId -> Bid
 
     // CONSTRUCTOR
@@ -139,14 +139,14 @@ contract BidBoard is Ownable {
      * Requirements:
      * msg.sender has to be the owner of the Bid Board.
      */
-    function updateMinBlocksToCancelBid(uint16 newWait) public onlyOwner {
+    function updateMinBlocksToCancelBid(uint32 newWait) public onlyOwner {
         minBlocksToCancelBid = newWait;
     }
 
     /**
      * @dev Returns the minimum blocks mining wait time to allow someone to cancel their bid.
      */
-    function getMinBlocksToCancelBid() public view returns(uint256 _minBlocksToCancelBid) {
+    function getMinBlocksToCancelBid() public view returns(uint32 _minBlocksToCancelBid) {
         return minBlocksToCancelBid;
     }
 }
